@@ -1083,41 +1083,79 @@ function PaymentsForm({
       note: "",
     });
   };
-  const del = (id: string) => setPayments(payments.filter((s) => s.id !== id));
-
-  const mkReceiptPDF = (p: Payment) => {
+    const mkReceiptPDF = (p: Payment) => {
     const doc = new jsPDF();
     const line = (y: number) => doc.line(14, y, 196, y);
 
+    // --- Header (Company / Branding) ---
     doc.setFontSize(16);
-    doc.text(company?.name || "skv-gb-global", 14, 18);
+    doc.text(company?.name || "SKV GB Global", 14, 18);
     doc.setFontSize(10);
+
+    const _email = company.email || DEFAULT_CONTACT.email;
+    const _phone = company.phone || "";
+    const _site  = DEFAULT_CONTACT.website;
     const headRight = [
       `TRN: ${company.trn || "-"}`,
-      company.email || "",
-      company.phone || "",
-    ]
-      .filter(Boolean)
-      .join("  ·  ");
+      _email,
+      _phone,
+      _site
+    ].filter(Boolean).join("  ·  ");
     doc.text(headRight, 196, 18, { align: "right" });
-    if (company.address) doc.text(company.address, 14, 24);
+
+    const _addr = company.address || DEFAULT_CONTACT.addressFallback;
+    if (_addr) doc.text(_addr, 14, 24);
 
     line(28);
 
+    // --- Title & Meta ---
     doc.setFontSize(14);
     doc.text(p.direction === "In" ? "RECEIPT" : "PAYMENT VOUCHER", 14, 38);
     doc.setFontSize(10);
     doc.text(`Date: ${p.date}`, 14, 46);
     if (p.ref) doc.text(`Reference: ${p.ref}`, 80, 46);
 
+    // Received From (Note में ग्राहक का नाम डालें / या "Received from: ...")
+    const receivedFrom = (p.note || "").toLowerCase().startsWith("received from:")
+      ? p.note
+      : (p.note ? `Received from: ${p.note}` : "");
+    if (receivedFrom) doc.text(receivedFrom, 14, 52);
+
+    // --- Table ---
     (doc as any).autoTable({
-      startY: 56,
-      head: [["Mode", "Direction", "Amount", "Note"]],
-      body: [[p.mode, p.direction, fmt(p.amount), p.note || "-"]],
+      startY: receivedFrom ? 60 : 56,
+      head: [["Mode", "Direction", "Amount"]],
+      body: [[p.mode, p.direction, fmt(p.amount)]],
       styles: { fontSize: 11 },
       headStyles: { fillColor: [15, 23, 42] },
-      margin: { left: 14, right: 14 },
+      margin: { left: 14, right: 14 }
     });
+
+    // --- Amount in words ---
+    const y1 = (doc as any).lastAutoTable.finalY + 8;
+    doc.setFontSize(10);
+    doc.text(`Amount in words: ${amountInWords(p.amount)}`, 14, y1);
+
+    // --- Bank Details Footer ---
+    const y2 = y1 + 14;
+    doc.setFontSize(10);
+    doc.text("Bank Details", 14, y2);
+    [
+      BANK.line1,
+      BANK.line2,
+      BANK.line3,
+      BANK.line4,
+      BANK.line5
+    ].forEach((t, i) => doc.text(t, 14, y2 + 6 + i * 6));
+
+    // --- Sign line ---
+    const y3 = y2 + 6 + 5 * 6 + 10;
+    doc.text("Authorized Signatory", 14, y3);
+    doc.line(14, y3 + 2, 80, y3 + 2);
+
+    doc.save(`${p.direction === "In" ? "receipt" : "payment"}_${p.date}.pdf`);
+  };
+
 
     const y = (doc as any).lastAutoTable.finalY + 16;
     doc.text("Authorized Signatory", 14, y);
