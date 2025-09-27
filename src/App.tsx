@@ -8,6 +8,21 @@ import "jspdf-autotable";
 type Money = number;
 
 type Company = {
+  // --- Company & Bank (for PDF header/footer) ---
+const DEFAULT_CONTACT = {
+  email: "info@skvchatgb.com",
+  website: "skvchatgb.com",
+  addressFallback: "Deira Gold Souq",
+};
+
+const BANK = {
+  line1: "Bank Name: Abu Dhabi Commercial Bank",
+  line2: "Account Name: SKV Business Services LLC",
+  line3: "Account No: 14302897920001",
+  line4: "IBAN: AE780030014302897920001",
+  line5: "SWIFT Code: ADCBAEAA",
+};
+
   name: string;
   trn?: string; // VAT/TRN
   address?: string;
